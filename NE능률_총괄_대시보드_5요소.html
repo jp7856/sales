@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>NE능률 총괄 임원 대시보드 — 5요소 표준</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0e131c; --panel:#181f2e; --panel2:#1f2738;
+  --text:#eaeef7; --muted:#8a94a8; --line:#2a3245;
+  --blue:#4f8df5; --green:#5fd49a; --amber:#ffb454; --red:#ff6b6b; --purple:#a78bfa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+     background:var(--bg);color:var(--text);padding:24px;line-height:1.55;font-size:14px;}
+
+/* Header */
+.header{display:flex;justify-content:space-between;align-items:flex-end;
+        padding-bottom:14px;border-bottom:2px solid var(--line);margin-bottom:20px;}
+.header h1{font-size:22px;font-weight:700;}
+.header .sub{color:var(--muted);font-size:12px;margin-top:4px;}
+.header .meta{color:var(--muted);font-size:12px;text-align:right;}
+
+/* Top Priority bar */
+.top-priority{background:linear-gradient(135deg,#3d1f1f,#2b1818);border:1px solid #5a2929;
+              border-radius:10px;padding:18px 22px;margin-bottom:20px;}
+.top-priority .label{font-size:11px;letter-spacing:2px;color:var(--red);font-weight:800;margin-bottom:10px;}
+.top-priority ol{padding-left:22px;}
+.top-priority li{font-size:15px;font-weight:600;margin-bottom:6px;}
+.top-priority li b{color:var(--amber);}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;margin-bottom:18px;border-bottom:1px solid var(--line);overflow-x:auto;}
+.tab{padding:10px 16px;background:transparent;border:none;color:var(--muted);
+     font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;
+     font-family:inherit;white-space:nowrap;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.section{display:none;animation:fade .25s;}
+.section.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* Company KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:18px;}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;}
+.kpi .lbl{font-size:11px;color:var(--muted);margin-bottom:6px;}
+.kpi .val{font-size:22px;font-weight:700;margin-bottom:4px;}
+.kpi .dlt{font-size:11px;font-weight:600;}
+.kpi .dlt.up{color:var(--green);} .kpi .dlt.dn{color:var(--red);} .kpi .dlt.flat{color:var(--muted);}
+
+/* 5-Element Block */
+.block{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px;}
+.block-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+.block-h .title{font-size:15px;font-weight:700;}
+.block-h .title .code{color:var(--blue);font-size:12px;font-weight:600;margin-right:8px;}
+.tag-pri{font-size:10px;padding:3px 8px;border-radius:4px;font-weight:700;letter-spacing:1px;}
+.tag-pri.top{background:var(--red);color:#fff;}
+.tag-pri.high{background:var(--amber);color:#000;}
+.tag-pri.mid{background:var(--blue);color:#fff;}
+
+.five{display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr 1.5fr;gap:12px;}
+.cell{background:var(--panel2);border-radius:6px;padding:12px;}
+.cell .head{font-size:10px;color:var(--muted);letter-spacing:1.5px;font-weight:700;margin-bottom:8px;}
+.cell .head .num{display:inline-block;background:var(--line);color:var(--text);width:18px;height:18px;
+                 border-radius:50%;text-align:center;line-height:18px;margin-right:6px;font-size:10px;}
+.cell .big{font-size:18px;font-weight:700;margin-bottom:4px;}
+.cell .small{font-size:12px;color:var(--muted);line-height:1.5;}
+.cell.kpi-c .big{color:var(--blue);}
+.cell.plan-c .big{color:var(--text);}
+.cell.act-c .big{color:var(--amber);}
+.cell.gap-c{background:#2d1f1f;}
+.cell.gap-c .head{color:var(--red);}
+.cell.action-c{background:#1f2d24;}
+.cell.action-c .head{color:var(--green);}
+.cell ul{padding-left:14px;font-size:12px;}
+.cell ul li{margin-bottom:4px;}
+.cell .due{font-size:10px;color:var(--amber);background:#3a2a14;padding:2px 6px;border-radius:3px;margin-left:4px;}
+
+/* Charts row */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+.chart-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;}
+.chart-card h3{font-size:13px;margin-bottom:10px;}
+.so-what{font-size:12px;color:var(--muted);font-style:italic;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);}
+.so-what::before{content:"→ ";color:var(--blue);font-weight:700;font-style:normal;}
+canvas{max-height:220px;}
+
+/* Proactive issues */
+.proactive{background:linear-gradient(135deg,#1f2a3d,#1a2030);border-left:4px solid var(--purple);
+           padding:16px 20px;border-radius:8px;margin-bottom:18px;}
+.proactive .lbl{font-size:11px;letter-spacing:2px;color:var(--purple);font-weight:700;margin-bottom:10px;}
+.proactive ul{list-style:none;}
+.proactive li{padding:6px 0;font-size:13px;}
+.proactive li b{color:var(--amber);}
+
+.footer{text-align:center;color:var(--muted);font-size:11px;margin-top:30px;padding-top:16px;border-top:1px solid var(--line);}
+
+/* Mobile fallback */
+@media(max-width:1100px){
+  .five{grid-template-columns:1fr 1fr;}
+  .charts-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>NE능률 총괄 임원 대시보드</h1>
+    <div class="sub">5요소 표준 (① KPI · ② 계획 · ③ 실적 · ④ 갭(원인) · ⑤ 액션) — 2026.05.15 부서장 회의 지침 반영</div>
+  </div>
+  <div class="meta">
+    보고기간: 2026년 5월 셋째 주<br>
+    데이터 업데이트: 2026-05-19 09:00<br>
+    작성: HR실 / 검토: CEO 직보
+  </div>
+</div>
+
+<!-- TOP PRIORITY (CEO가 묻기 전에 먼저 노출) -->
+<div class="top-priority">
+  <div class="label">▸ TOP PRIORITY — 이번 주 임원 결정 필요 사항</div>
+  <ol>
+    <li>온·오프라인 매출 비중 갭 <b>(시장 60% vs 자사 30%)</b> 원인 규명 데이터 산출 — <b>5/30까지</b></li>
+    <li>공급률 차등화 1차 테스트 카테고리 확정 — <b>1%P 상승 시 영업이익률 +1.5%P</b> 효과 검증</li>
+    <li>총판 부가가치 실측 vs 직거래 전환 시뮬레이션 — <b>다음 임원 회의 안건 상정 요청</b></li>
+  </ol>
+</div>
+
+<!-- 회사 전체 KPI -->
+<div class="kpi-grid">
+  <div class="kpi"><div class="lbl">월 매출 (5월 누적)</div><div class="val">₩42.6억</div><div class="dlt up">▲ 4.2% vs 계획</div></div>
+  <div class="kpi"><div class="lbl">영업이익률</div><div class="val">11.8%</div><div class="dlt dn">▼ 1.2%p vs 계획</div></div>
+  <div class="kpi"><div class="lbl">온라인 매출 비중</div><div class="val">30.1%</div><div class="dlt dn">시장 60%↑ 대비 -30%p</div></div>
+  <div class="kpi"><div class="lbl">평균 공급률</div><div class="val">59.7%</div><div class="dlt flat">오프 57 / 온 63.4</div></div>
+  <div class="kpi"><div class="lbl">학원 채택률 (전환영업)</div><div class="val">목표 40개</div><div class="dlt flat">5/26~ 진행</div></div>
+  <div class="kpi"><div class="lbl">자사몰 ROAS</div><div class="val">0.7</div><div class="dlt flat">테스트 단계</div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="overview">📊 핵심 시각화</button>
+  <button class="tab" data-tab="cat3-2">3-2 온·오프 갭</button>
+  <button class="tab" data-tab="cat3-3">3-3 공급률</button>
+  <button class="tab" data-tab="cat3-4">3-4 총판 모델</button>
+  <button class="tab" data-tab="cat3-1">3-1 ELT</button>
+  <button class="tab" data-tab="cat3-5">3-5 자사몰·스토어</button>
+  <button class="tab" data-tab="cat3-6">3-6 세일즈팀</button>
+</div>
+
+<!-- ========== 핵심 시각화 ========== -->
+<div class="section active" id="overview">
+  <div class="proactive">
+    <div class="lbl">▸ 선제적 이슈 노출 (CEO가 묻기 전에)</div>
+    <ul>
+      <li>📌 시장 온라인 비중 60% 대비 자사 30%는 <b>구조적 채널 불균형</b>. 단순 마케팅이 아닌 채널 전략 재설계 필요.</li>
+      <li>📌 공급률 1%P 인상 시 영업이익률 +1.5%P 효과 → <b>베스트셀러 5종</b>만 우선 적용해도 연 환산 약 ₩X억 추정.</li>
+      <li>📌 총판 1,200개 거래처 중 <b>상위 20%가 매출 80% 추정</b> (검증 필요) → 하위 80%는 직거래 전환 후보군.</li>
+    </ul>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>🔍 온·오프라인 매출 비중 — 시장 vs 자사</h3>
+      <canvas id="cMarket"></canvas>
+      <div class="so-what">시장 추세와 정반대 구조. 오프라인 매출이 견조해서 가려졌지만, 시장 변화 속도 감안 시 2027년 역전 위기.</div>
+    </div>
+    <div class="chart-card">
+      <h3>💰 공급률 인상 시뮬레이션 (영업이익률 영향)</h3>
+      <canvas id="cMargin"></canvas>
+      <div class="so-what">베스트셀러 한정 +2%P 인상만으로도 영업이익률 3%P 개선 가능 — 매출 영향 최소화 전제.</div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>📈 채널별 매출 추이 (최근 12개월)</h3>
+      <canvas id="cTrend"></canvas>
+      <div class="so-what">온라인 성장률 +18% YoY로 가속, 오프라인은 -3% 정체. 비중 자연 역전까지 약 18~24개월 추정.</div>
+    </div>
+    <div class="chart-card">
+      <h3>🏫 학원 채택 → 학생 구매 전환율 (Funnel)</h3>
+      <canvas id="cFunnel"></canvas>
+      <div class="so-what">채택 후 실제 구매까지 평균 32% 누락 — 학원-학생 간 전환 단계 추적 데이터 부재.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 3-2 온·오프 갭 ========== -->
+<div class="section" id="cat3-2">
+  <div class="block">
+    <div class="block-h">
+      <div class="title"><span class="code">[3-2]</span>온·오프라인 매출 갭 원인 규명</div>
+      <span class="tag-pri top">TOP</span>
+    </div>
+    <div class="five">
+      <div class="cell kpi-c">
+        <div class="head"><span class="num">①</span>핵심 KPI</div>
+        <div class="big">온라인 비중</div>
+        <div class="small">시장: 60%↑<br>자사: 30.1%</div>
+      </div>
+      <div class="cell plan-c">
+        <div class="head"><span class="num">②</span>계획</div>
+        <div class="big">1,200개 풀DB 재정리</div>
+        <div class="small">마케팅기획실 + 채널마케팅본부 공동<br>학원→학생 전환 흐름 산출</div>
+      </div>
+      <div class="cell act-c">
+        <div class="head"><span class="num">③</span>실적</div>
+        <div class="big">진행 18%</div>
+        <div class="small">서점 280개 1차 분류 완료<br>학원 920개 미착수</div>
+      </div>
+      <div class="cell gap-c">
+        <div class="head"><span class="num">④</span>갭 (원인)</div>
+        <div class="big">데이터 흩어짐</div>
+        <div class="small">• 채널마케팅본부 CRM ↔ 영업부 엑셀 분리<br>• 학원 채택 데이터 자체가 비정형(전화·구두)<br>• '학원 채택 → 학생 구매' 흐름 데이터 누락</div>
+      </div>
+      <div class="cell action-c">
+        <div class="head"><span class="num">⑤</span>액션</div>
+        <div class="big">3단계 실행</div>
+        <ul>
+          <li>📅 <b>5/22</b>: 거래처 풀 통합 양식 확정<span class="due">D-3</span></li>
+          <li>📅 <b>5/30</b>: 1,200개 재정리 완료</li>
+          <li>📅 <b>6/13</b>: 정량 검증 1차 보고 (자사몰·학원 가설)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="proactive">
+    <div class="lbl">▸ 가설 → 정량 검증 대상 (구두 답변 금지)</div>
+    <ul>
+      <li>가설 A: "학생들이 학원에서 채택한 책을 자사몰에서 직구매한다" → <b>실제 자사몰 구매자의 학원 채택 매칭률 측정 필요</b></li>
+      <li>가설 B: "오프라인 강세는 학원 영업 풀뿌리 때문" → <b>학원 채택률 vs 일반 서점 매출 상관관계 분석 필요</b></li>
+      <li>가설 C: "온라인 노출 부족이 비중 차이의 원인" → <b>키워드 검색량 vs 자사 노출 점유율 격차 측정 필요</b></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ========== 3-3 공급률 ========== -->
+<div class="section" id="cat3-3">
+  <div class="block">
+    <div class="block-h">
+      <div class="title"><span class="code">[3-3]</span>공급률(프라이싱) 전략 재설계</div>
+      <span class="tag-pri top">TOP</span>
+    </div>
+    <div class="five">
+      <div class="cell kpi-c">
+        <div class="head"><span class="num">①</span>핵심 KPI</div>
+        <div class="big">평균 공급률</div>
+        <div class="small">오프: 57.0%<br>온: 63.4%<br>1%P↑ = 영업이익률 +1.5%P</div>
+      </div>
+      <div class="cell plan-c">
+        <div class="head"><span class="num">②</span>계획</div>
+        <div class="big">차등 정책 도입</div>
+        <div class="small">베스트셀러 ↑ / 비주력 ↓<br>별도 안건 상정 예정</div>
+      </div>
+      <div class="cell act-c">
+        <div class="head"><span class="num">③</span>실적</div>
+        <div class="big">테스트 미착수</div>
+        <div class="small">우선 인하 카테고리 후보군 식별 중<br>(연중판매·비주력 8종)</div>
+      </div>
+      <div class="cell gap-c">
+        <div class="head"><span class="num">④</span>갭 (원인)</div>
+        <div class="big">동일 공급률 관행</div>
+        <div class="small">• 수요 무관 단일 공급률 적용 중<br>• 거래처 반발 우려로 차등화 보류돼 왔음<br>• 카테고리별 가격 탄력성 측정 데이터 없음</div>
+      </div>
+      <div class="cell action-c">
+        <div class="head"><span class="num">⑤</span>액션</div>
+        <div class="big">파일럿 우선</div>
+        <ul>
+          <li>📅 <b>5/26</b>: 베스트셀러 Top 5 + 비주력 8종 확정<span class="due">D-7</span></li>
+          <li>📅 <b>6/2</b>: 3대 거래처 시범 적용 (오프 한정)</li>
+          <li>📅 <b>6/30</b>: 매출 반응 측정 1차 보고</li>
+          <li>📅 <b>7/15</b>: 전체 차등 정책안 임원 보고</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 3-4 총판 모델 ========== -->
+<div class="section" id="cat3-4">
+  <div class="block">
+    <div class="block-h">
+      <div class="title"><span class="code">[3-4]</span>총판 비즈니스 모델 근본 검토</div>
+      <span class="tag-pri high">HIGH</span>
+    </div>
+    <div class="five">
+      <div class="cell kpi-c">
+        <div class="head"><span class="num">①</span>핵심 KPI</div>
+        <div class="big">총판 부가가치</div>
+        <div class="small">목표: 정량 산출<br>(현재 정의 불명확)</div>
+      </div>
+      <div class="cell plan-c">
+        <div class="head"><span class="num">②</span>계획</div>
+        <div class="big">2단계 검토</div>
+        <div class="small">1. 채택 영업 기여도 실측<br>2. 직거래 시뮬레이션</div>
+      </div>
+      <div class="cell act-c">
+        <div class="head"><span class="num">③</span>실적</div>
+        <div class="big">미착수</div>
+        <div class="small">총판 1,200개 데이터 정리(3-2)와 연동 필요</div>
+      </div>
+      <div class="cell gap-c">
+        <div class="head"><span class="num">④</span>갭 (원인)</div>
+        <div class="big">근거 데이터 부재</div>
+        <div class="small">• 콘텐츠 자체 경쟁력으로 채택되는데, 총판 마진을 계속 지급 중<br>• 풀뿌리 커버리지 가치가 추측에 머묾<br>• 직거래 전환 시 운영 비용 산정 미실시</div>
+      </div>
+      <div class="cell action-c">
+        <div class="head"><span class="num">⑤</span>액션</div>
+        <div class="big">실측 + 시뮬</div>
+        <ul>
+          <li>📅 <b>6/13</b>: 총판 채택 기여도 실측 (3-2와 연동)</li>
+          <li>📅 <b>6/27</b>: 직거래 + 수수료 모델 ROI 시뮬</li>
+          <li>📅 <b>7/11</b>: 전환 시나리오 임원 보고</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 3-1 ELT ========== -->
+<div class="section" id="cat3-1">
+  <div class="block">
+    <div class="block-h">
+      <div class="title"><span class="code">[3-1]</span>ELT 매출채권 및 재고 상시 가시화</div>
+      <span class="tag-pri high">HIGH</span>
+    </div>
+    <div class="five">
+      <div class="cell kpi-c">
+        <div class="head"><span class="num">①</span>핵심 KPI</div>
+        <div class="big">매출채권 회전일수<br>재고 회전율</div>
+        <div class="small">현재 측정 미실시</div>
+      </div>
+      <div class="cell plan-c">
+        <div class="head"><span class="num">②</span>계획</div>
+        <div class="big">주간 ELT 별도 보고</div>
+        <div class="small">매출채권·재고 현황<br>CEO 직보 체계 구축</div>
+      </div>
+      <div class="cell act-c">
+        <div class="head"><span class="num">③</span>실적</div>
+        <div class="big">보고 체계 부재</div>
+        <div class="small">현재 정기 보고 없음<br>이슈 발생 시에만 산발 보고</div>
+      </div>
+      <div class="cell gap-c">
+        <div class="head"><span class="num">④</span>갭 (원인)</div>
+        <div class="big">정기 보고 체계 없음</div>
+        <div class="small">• ELT 사업부 자체 데이터 통합 미흡<br>• 매출채권/재고는 재무팀 분산 관리<br>• CEO 가시성 확보용 양식 미정의</div>
+      </div>
+      <div class="cell action-c">
+        <div class="head"><span class="num">⑤</span>액션</div>
+        <div class="big">주간 보고 체계화</div>
+        <ul>
+          <li>📅 <b>5/22</b>: ELT 보고 양식 확정 (5요소 적용)<span class="due">D-3</span></li>
+          <li>📅 <b>5/29</b>: 1차 주간 ELT 별도 보고 (CEO 직보)</li>
+          <li>📅 <b>6/12</b>: 채권·재고 임계치 알람 자동화</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 3-5 자사몰·스토어 ========== -->
+<div class="section" id="cat3-5">
+  <div class="block">
+    <div class="block-h">
+      <div class="title"><span class="code">[3-5]</span>자사몰·스마트스토어 노출 확보 및 ROAS 검증</div>
+      <span class="tag-pri mid">MID</span>
+    </div>
+    <div class="five">
+      <div class="cell kpi-c">
+        <div class="head"><span class="num">①</span>핵심 KPI</div>
+        <div class="big">노출도 / ROAS</div>
+        <div class="small">스마트스토어 노출↓<br>ROAS 1 이하 단계는 학습 우선</div>
+      </div>
+      <div class="cell plan-c">
+        <div class="head"><span class="num">②</span>계획</div>
+        <div class="big">노출+후크 동시</div>
+        <div class="small">N배송 활용, 검색광고 입찰<br>'연구용 교재 프리패스' 후크 아이템</div>
+      </div>
+      <div class="cell act-c">
+        <div class="head"><span class="num">③</span>실적</div>
+        <div class="big">현 ROAS 0.7</div>
+        <div class="small">초기 테스트 단계<br>다음 주 마케팅기획실 보고 예정</div>
+      </div>
+      <div class="cell gap-c">
+        <div class="head"><span class="num">④</span>갭 (원인)</div>
+        <div class="big">노출 자체가 부족</div>
+        <div class="small">• 검색광고 입찰 미참여 키워드 다수<br>• 후크 아이템 미운영<br>• 학습 단계 KPI 정의 부재 (CVR? CAC?)</div>
+      </div>
+      <div class="cell action-c">
+        <div class="head"><span class="num">⑤</span>액션</div>
+        <div class="big">노출→학습 KPI</div>
+        <ul>
+          <li>📅 <b>5/22</b>: 마케팅기획실 ROAS 전략 보고<span class="due">D-3</span></li>
+          <li>📅 <b>6/5</b>: 후크 아이템 1차 출시</li>
+          <li>📅 <b>6/30</b>: 학습 단계 KPI 정착·재정의</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 3-6 세일즈팀 ========== -->
+<div class="section" id="cat3-6">
+  <div class="block">
+    <div class="block-h">
+      <div class="title"><span class="code">[3-6]</span>수도권 세일즈팀 — 공동영업 실효성 검증</div>
+      <span class="tag-pri mid">MID</span>
+    </div>
+    <div class="five">
+      <div class="cell kpi-c">
+        <div class="head"><span class="num">①</span>핵심 KPI</div>
+        <div class="big">채택 40개</div>
+        <div class="small">대상 296개 DB<br>작년 채택률 20% 기준</div>
+      </div>
+      <div class="cell plan-c">
+        <div class="head"><span class="num">②</span>계획</div>
+        <div class="big">2주 전환 영업</div>
+        <div class="small">광주·대전·포항·부산·안동<br>콘텐츠 개발자 동행</div>
+      </div>
+      <div class="cell act-c">
+        <div class="head"><span class="num">③</span>실적</div>
+        <div class="big">5/26 시작 예정</div>
+        <div class="small">DB 검증 완료, 일정 확정<br>콘텐츠 개발자 5명 매칭 완료</div>
+      </div>
+      <div class="cell gap-c">
+        <div class="head"><span class="num">④</span>갭 (원인)</div>
+        <div class="big">기존 단독 방문 한계</div>
+        <div class="small">• 영업 인력 단독 방문 시 콘텐츠 깊이 설명 한계<br>• 학원 의사결정자가 '제작자 직접 설명' 요구 빈번<br>• 워마 대체 296개 DB 신뢰도 검증 필요</div>
+      </div>
+      <div class="cell action-c">
+        <div class="head"><span class="num">⑤</span>액션</div>
+        <div class="big">2주 + 측정</div>
+        <ul>
+          <li>📅 <b>5/26~6/6</b>: 전환영업 실시 (5개 지역)</li>
+          <li>📅 <b>6/10</b>: 채택률 vs 작년 20% 비교 보고</li>
+          <li>📅 <b>6/13</b>: 콘텐츠 개발자 동행 ROI 분석</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  ※ 본 대시보드는 NE능률 2026.05.15 부서장 회의 지침에 따라 작성된 표준 템플릿입니다.<br>
+  Top Priority → 5요소(KPI/계획/실적/갭/액션) → 선제적 이슈 노출 순서를 유지하세요.
+</div>
+
+<script>
+// 탭
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+  });
+});
+
+const base = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{labels:{color:'#8a94a8',font:{size:11}}}},
+  scales:{
+    x:{ticks:{color:'#8a94a8'},grid:{color:'#2a3245'}},
+    y:{ticks:{color:'#8a94a8'},grid:{color:'#2a3245'}}
+  }
+};
+
+// 시장 vs 자사 채널 비중
+new Chart(document.getElementById('cMarket'),{
+  type:'bar',
+  data:{labels:['시장 평균','당사'],
+    datasets:[
+      {label:'온라인',data:[60,30.1],backgroundColor:'#4f8df5'},
+      {label:'오프라인',data:[40,69.9],backgroundColor:'#ffb454'}
+    ]},
+  options:{...base,scales:{...base.scales,
+    x:{...base.scales.x,stacked:true},
+    y:{...base.scales.y,stacked:true,max:100,ticks:{...base.scales.y.ticks,callback:v=>v+'%'}}
+  }}
+});
+
+// 공급률 인상 시뮬레이션
+new Chart(document.getElementById('cMargin'),{
+  type:'line',
+  data:{labels:['+0%P','+0.5%P','+1%P','+1.5%P','+2%P','+2.5%P','+3%P'],
+    datasets:[{label:'영업이익률 영향(%P)',data:[0,0.75,1.5,2.25,3.0,3.75,4.5],
+      borderColor:'#5fd49a',backgroundColor:'rgba(95,212,154,.15)',tension:.2,fill:true}]},
+  options:base
+});
+
+// 채널별 추이
+new Chart(document.getElementById('cTrend'),{
+  type:'line',
+  data:{labels:['6월','7월','8월','9월','10월','11월','12월','1월','2월','3월','4월','5월'],
+    datasets:[
+      {label:'오프라인(억)',data:[8.2,8.0,8.3,8.4,8.1,7.9,7.8,7.7,7.9,7.8,7.6,7.5],borderColor:'#ffb454',tension:.3},
+      {label:'온라인(억)',data:[2.8,2.9,3.1,3.0,3.2,3.4,3.5,3.7,3.6,3.8,4.0,4.2],borderColor:'#4f8df5',tension:.3}
+    ]},
+  options:base
+});
+
+// 학원 채택 → 학생 구매 Funnel
+new Chart(document.getElementById('cFunnel'),{
+  type:'bar',
+  data:{labels:['학원 채택','교사 안내','학생 인지','자사몰 구매'],
+    datasets:[{label:'전환률(%)',data:[100,82,68,32],
+      backgroundColor:['#4f8df5','#5fd49a','#ffb454','#ff6b6b']}]},
+  options:{...base,scales:{...base.scales,y:{...base.scales.y,max:100,ticks:{...base.scales.y.ticks,callback:v=>v+'%'}}}}
+});
+</script>
+</body>
+</html>
